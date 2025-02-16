@@ -27,7 +27,9 @@ def test_exchange_rate(mock_get, currencies, answer_currencies):
 
 
 @patch("src.utils.requests.get")
-def test_exchange_rate_with_incorrect_status_code(mock_get, currencies, answer_currencies):
+def test_exchange_rate_with_incorrect_status_code(
+    mock_get, currencies, answer_currencies
+):
     """Тест при отсутствии ответа от API"""
     mock_get.return_value.json.return_value = answer_currencies
     mock_get.return_value.status_code = 404
@@ -50,16 +52,36 @@ def test_card_info_incorrect_date_format(test_df):
 def test_top_5_transactions(test_df):
     """Тест топ 5 транзакций за месяц"""
     assert top_5_transactions("2021-12-31 16:44:00", test_df) == [
-        {"date": "31.12.2021", "amount": -564.0, "category": "Различные товары", "description": "Константин. К"},
-        {"date": "09.12.2021", "amount": -525.0, "category": "Одежда и обувь", "description": "WILDBERRIES"},
+        {
+            "date": "31.12.2021",
+            "amount": -564.0,
+            "category": "Различные товары",
+            "description": "Константин. К",
+        },
+        {
+            "date": "09.12.2021",
+            "amount": -525.0,
+            "category": "Одежда и обувь",
+            "description": "WILDBERRIES",
+        },
         {
             "date": "16.12.2021",
             "amount": -500.0,
             "category": "Местный транспорт",
             "description": "Метро Санкт-петербург",
         },
-        {"date": "31.12.2021", "amount": -160.89, "category": "Супермаркеты", "description": "Колхоз"},
-        {"date": "31.12.2021", "amount": -118.12, "category": "Супермаркеты", "description": "Магнит"},
+        {
+            "date": "31.12.2021",
+            "amount": -160.89,
+            "category": "Супермаркеты",
+            "description": "Колхоз",
+        },
+        {
+            "date": "31.12.2021",
+            "amount": -118.12,
+            "category": "Супермаркеты",
+            "description": "Магнит",
+        },
     ]
 
 
