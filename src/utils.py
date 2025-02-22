@@ -23,20 +23,19 @@ file_handler.setFormatter(file_formatter)
 utils_logger.addHandler(file_handler)
 utils_logger.setLevel(logging.DEBUG)
 
-path_to_file = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx"
-)
+path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
+
+user_date = datetime.datetime.now()
 
 
-def greeting():
+def greeting(user_date):
     """Функция вывода сообщения приветствия в зависимости от времени суток"""
     opts = {"greeting": ("Доброе утро", "Добрый день", "Добрый вечер", "Доброй ночи")}
-    current_time = datetime.datetime.now()
-    if 4 <= current_time.hour <= 12:
+    if 4 <= user_date.hour <= 12:
         greet = opts["greeting"][0]
-    elif 12 <= current_time.hour <= 16:
+    elif 12 <= user_date.hour <= 16:
         greet = opts["greeting"][1]
-    elif 16 <= current_time.hour <= 24:
+    elif 16 <= user_date.hour <= 24:
         greet = opts["greeting"][2]
     else:
         greet = opts["greeting"][3]
@@ -59,6 +58,9 @@ def read_excel(path_to_file: str) -> list[dict]:
         axis=1,
     ).tolist()
     return result
+
+
+my_list = read_excel(path_to_file)
 
 
 def for_each_card(my_list: list) -> list:
@@ -96,7 +98,7 @@ def get_price_stock(stocks: list) -> list:
     stock_prices = []
     utils_logger.info("Функция обрабатывает данные транзакций.")
     for stock in stocks:
-        logger.info("Перебор акций в списке 'stocks' в функции (get_price_stock)")
+        utils_logger.info("Перебор акций в списке 'stocks' в функции (get_price_stock)")
         url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={stock}&apikey={api_key}"
         r = requests.get(url)
         result = r.json()
@@ -135,14 +137,10 @@ def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
     return currency_rate
 
 
-def top_5_transactions(
-    date_string: str, data_frame: pd.DataFrame
-) -> list[dict[str, Any]]:
+def top_5_transactions(date_string: str, data_frame: pd.DataFrame) -> list[dict[str, Any]]:
     """Функция отображения топ 5 транзакций по сумме платежа"""
     try:
-        date_string_dt_obj = datetime.datetime.strptime(
-            date_string, "%Y-%m-%d %H:%M:%S"
-        ).date()
+        date_string_dt_obj = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S").date()
         start_date_for_sorting = date_string_dt_obj.replace(day=1)
         edited_df = data_frame.drop(
             [

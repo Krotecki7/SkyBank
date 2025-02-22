@@ -1,8 +1,8 @@
 import json
+import logging
 
 import pandas as pd
 import pytest
-import logging
 
 from src.reports import spending_by_category, writing_report
 

@@ -1,8 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-import logging
-
 from src.utils import card_info, exchange_rate, greeting, top_5_transactions
 
 

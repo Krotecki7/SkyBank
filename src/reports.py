@@ -6,9 +6,7 @@ from typing import Any, Callable, Optional
 
 import pandas as pd
 
-path_to_file = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx"
-)
+path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rel_file_path = os.path.join(current_dir, "../logs/utils.log")
@@ -45,9 +43,7 @@ def writing_report(filename="report") -> Callable:
     return my_decorator
 
 
-def spending_by_category(
-    transactions: pd.DataFrame, category: str, date: Optional[str] = None
-) -> pd.DataFrame:
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
     """Функция выводящая траты за последние 3 месяца от вводимой даты в заданой категории"""
     edit_df = transactions.drop(
         [
@@ -81,9 +77,7 @@ def spending_by_category(
             & (edit_df["Transaction date"] >= start_date_obj)
             & (edit_df["Category"] == category)
         ]
-        report_df.loc[:, "Transaction date"] = report_df["Transaction date"].apply(
-            lambda x: x.strftime("%d.%m.%Y")
-        )
+        report_df.loc[:, "Transaction date"] = report_df["Transaction date"].apply(lambda x: x.strftime("%d.%m.%Y"))
         if not report_df.to_dict(orient="records"):
             raise NameError
     except ValueError:
