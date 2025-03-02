@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-from typing import Any
 
 import pandas as pd
 import requests
@@ -25,21 +24,23 @@ utils_logger.setLevel(logging.DEBUG)
 
 path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
 
-user_date = datetime.datetime.now()
 
+def greeting():
+    """
+    Функция, которая приветствует в зависимости от текущего времени суток.
+    Возвращает строку приветствия в зависимости от времени.
+    """
+    current_date_time = datetime.datetime.now()
+    hour = current_date_time.hour
 
-def greeting(user_date):
-    """Функция вывода сообщения приветствия в зависимости от времени суток"""
-    opts = {"greeting": ("Доброе утро", "Добрый день", "Добрый вечер", "Доброй ночи")}
-    if 4 <= user_date.hour <= 12:
-        greet = opts["greeting"][0]
-    elif 12 <= user_date.hour <= 16:
-        greet = opts["greeting"][1]
-    elif 16 <= user_date.hour <= 24:
-        greet = opts["greeting"][2]
+    if 0 <= hour < 6 or 22 <= hour <= 23:
+        return "Доброй ночи"
+    elif 17 <= hour <= 22:
+        return "Добрый вечер"
+    elif 7 <= hour <= 11:
+        return "Доброе утро"
     else:
-        greet = opts["greeting"][3]
-    return greet
+        return "Добрый день"
 
 
 def read_excel(path_to_file: str) -> list[dict]:
@@ -91,6 +92,9 @@ def for_each_card(my_list: list) -> list:
     return result
 
 
+stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+
+
 def get_price_stock(stocks: list) -> list:
     """Функция для получения данных об акциях из списка S&P500"""
     utils_logger.info("Начало работы функции (get_price_stock)")
@@ -111,6 +115,9 @@ def get_price_stock(stocks: list) -> list:
         )
     utils_logger.info("Функция get_price_stock успешно завершила свою работу")
     return stock_prices
+
+
+currency_list = ["USD", "EUR"]
 
 
 def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
@@ -137,52 +144,20 @@ def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
     return currency_rate
 
 
-def top_5_transactions(date_string: str, data_frame: pd.DataFrame) -> list[dict[str, Any]]:
-    """Функция отображения топ 5 транзакций по сумме платежа"""
-    try:
-        date_string_dt_obj = datetime.datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S").date()
-        start_date_for_sorting = date_string_dt_obj.replace(day=1)
-        edited_df = data_frame.drop(
-            [
-                "Payment date",
-                "Card number",
-                "Transaction currency",
-                "Payment amount",
-                "Payment currency",
-                "Cashback",
-                "MCC",
-                "Bonuses (including cashback)",
-                "Rounding to the investment bank",
-                "The amount of the operation with rounding",
-            ],
-            axis=1,
+def max_five_transactions(data_time: pd.Timestamp) -> pd.DataFrame:
+    """
+    Функция, которая извлекает топ-5 транзакций по сумме платежа.
+    """
+    df = pd.read_excel(path_to_file)
+
+    filtered_df = df.copy()
+
+    filtered_df = filtered_df.loc[
+        (pd.to_datetime(filtered_df["Дата операции"], format="%d.%m.%Y %H:%M:%S", dayfirst=True) <= data_time)
+        & (
+            pd.to_datetime(filtered_df["Дата операции"], format="%d.%m.%Y %H:%M:%S", dayfirst=True)
+            >= data_time.replace(day=1)
         )
-        edited_df["Transaction date"] = edited_df["Transaction date"].apply(
-            lambda x: datetime.datetime.strptime(f"{x}", "%d.%m.%Y %H:%M:%S").date()
-        )
-        filtered_df_by_date = edited_df.loc[
-            (edited_df["Transaction date"] <= date_string_dt_obj)
-            & (edited_df["Transaction date"] >= start_date_for_sorting)
-            & (edited_df["Transaction amount"].notnull())
-            & (edited_df["Status"] != "FAILED")
-        ]
-        sorted_df_by_transaction_amount = filtered_df_by_date.sort_values(
-            by=["Transaction amount"], ascending=False, key=lambda x: abs(x)
-        )
-        top_transactions = sorted_df_by_transaction_amount[0:5]
-        data_list = []
-        for index, row in top_transactions.iterrows():
-            data_dict = {
-                "date": row["Transaction date"].strftime("%d.%m.%Y"),
-                "amount": round(row["Transaction amount"], 2),
-                "category": row["Category"],
-                "description": row["Description"],
-            }
-            data_list.append(data_dict)
-        utils_logger.info("Данные по топу транзакций успешно сформированны")
-    except ValueError:
-        utils_logger.error("Ошибка ввода данных: неверный формат даты")
-        print("Неверный формат даты")
-        return []
-    else:
-        return data_list
+    ]
+    top_transactions = filtered_df.sort_values(by="Сумма операции с округлением", ascending=False).head(5)
+    return top_transactions

@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import logging
 import os
 from functools import wraps
@@ -44,52 +44,57 @@ def writing_report(filename="report") -> Callable:
 
 
 def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
-    """Функция выводящая траты за последние 3 месяца от вводимой даты в заданой категории"""
-    edit_df = transactions.drop(
-        [
-            "Payment date",
-            "Card number",
-            "Status",
-            "Transaction currency",
-            "Payment amount",
-            "Payment currency",
-            "Cashback",
-            "MCC",
-            "Description",
-            "Bonuses (including cashback)",
-            "Rounding to the investment bank",
-            "The amount of the operation with rounding",
-        ],
-        axis=1,
-    )
-    edit_df["Transaction date"] = edit_df["Transaction date"].apply(
-        lambda x: datetime.datetime.strptime(f"{x}", "%d.%m.%Y %H:%M:%S").date()
-    )
+    """
+    Функция принимает на вход датафрейм с транзакциями, название категории, и опциональную дату в формате ДД.ММ.ГГГГ.
+    Если дата не передана, то берется текущая дата.
+    И возвращает траты по заданной категории за последние три месяца (от переданной даты).
+    """
     try:
-        if date:
-            end_date_obj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S").date()
-            start_date_obj = end_date_obj - datetime.timedelta(days=90)
+        if not date:
+            stop_date = datetime.now()
+
         else:
-            end_date_obj = datetime.datetime.now().date()
-            start_date_obj = end_date_obj - datetime.timedelta(days=90)
-        report_df = edit_df.loc[
-            (edit_df["Transaction date"] <= end_date_obj)
-            & (edit_df["Transaction date"] >= start_date_obj)
-            & (edit_df["Category"] == category)
+            stop_date = datetime.strptime(date, "%d.%m.%Y")
+
+        reports_logger.info("Определение даты, начиная с которой будут взяты операции для подсчета трат по категориям")
+
+        start_date = stop_date - pd.timedelta(days=90)
+
+        reports_logger.info("Проверка на наличие необходимых столбцов в датафрейм")
+
+        required_columns = ["Дата платежа", "Категория", "Сумма операции"]
+        for column in required_columns:
+
+            if column not in transactions.columns:
+                reports_logger.error(f"Отсутствует необходимый столбец: {column}")
+
+                return pd.DataFrame()
+
+        reports_logger.info("Преобразование дат операций в объект datatime")
+
+        transactions["Дата платежа"] = pd.to_datetime(transactions["Дата платежа"], format="%d.%m.%Y")
+
+        reports_logger.info("Формирование списка операций для формирования отчета")
+
+        filtered_transactions = transactions[
+            (transactions["Дата платежа"] >= start_date)
+            & (transactions["Дата платежа"] <= stop_date)
+            & (transactions["Категория"] == category)
+            & (transactions["Сумма операции"] < 0)
         ]
-        report_df.loc[:, "Transaction date"] = report_df["Transaction date"].apply(lambda x: x.strftime("%d.%m.%Y"))
-        if not report_df.to_dict(orient="records"):
-            raise NameError
-    except ValueError:
-        reports_logger.error("Ошибка в выборке операций: не корректный формат даты")
-        print("Некорректный формат даты")
-        return pd.DataFrame({})
-    except NameError:
-        print("Неверно введена категория")
-        return pd.DataFrame({})
-    else:
-        reports_logger.info("Выборка операций успешно завершена")
-        return report_df
-    finally:
-        reports_logger.info("Завершение работы программы")
-        print("Формирование отчёта завершено")
+
+        reports_logger.info("Инициализация отчета")
+
+        total_spending = filtered_transactions["Сумма операции"].abs().sum()
+
+        result = pd.DataFrame({"Категория": [category], "Сумма трат": [total_spending]})
+
+    except ValueError as ve:
+        reports_logger.error(f"Ошибка значения: {ve}")
+        return pd.DataFrame()
+
+    except Exception as e:
+        reports_logger.error(f"Произошла ошибка: {e}")
+        return pd.DataFrame()
+
+    return result
