@@ -43,56 +43,17 @@ def greeting():
         return "Добрый день"
 
 
-def read_excel(path_to_file: str) -> list[dict]:
-    """Функция читает .xlsx файл и возвращает список словарей"""
-    df = pd.read_excel(path_to_file)
-    result = df.apply(
-        lambda row: {
-            "Дата платежа": row["Дата платежа"],
-            "Статус": row["Статус"],
-            "Сумма платежа": row["Сумма платежа"],
-            "Валюта платежа": row["Валюта платежа"],
-            "Категория": row["Категория"],
-            "Описание": row["Описание"],
-            "Номер карты": row["Номер карты"],
-        },
-        axis=1,
-    ).tolist()
-    return result
-
-
-my_list = read_excel(path_to_file)
-
-
-def for_each_card(my_list: list) -> list:
-    """Функция создания информации по каждой карте"""
-    utils_logger.info("Начало работы функции (for_each_card)")
-    cards = {}
-    result = []
-    utils_logger.info("Перебор транзакций")
-    for i in my_list:
-        if i["Номер карты"] == "nan" or type(i["Номер карты"]) is float:
-            continue
-        elif i["Сумма платежа"] == "nan":
-            continue
-        else:
-            if i["Номер карты"][1:] in cards:
-                cards[i["Номер карты"][1:]] += float(str(i["Сумма платежа"])[1:])
-            else:
-                cards[i["Номер карты"][1:]] = float(str(i["Сумма платежа"])[1:])
-    for k, v in cards.items():
-        result.append(
-            {
-                "last_digits": k,
-                "total_spent": round(v, 2),
-                "cashback": round(v / 100, 2),
-            }
-        )
-    utils_logger.info("Завершение работы функции (for_each_card)")
-    return result
-
-
-stocks = ["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]
+def get_excel_df(filename: str) -> list[dict]:
+    """считывает данные из внешнего файла Excel и возвращает их в формате DataFrame
+    за период с начала месяца до заданной даты в формате YYYY-MM-DD HH:MM:SS"""
+    try:
+        path = os.path.join("../data/", filename)
+        excel_data = pd.read_excel(path)
+        list_dict = excel_data.to_dict(orient="records")
+        utils_logger.info(f"Успешное преобразование файла {filename} из объекта json в python")
+        return list_dict
+    except Exception as e:
+        utils_logger.warning(f"!!!! Не удалось преобразовать файл {filename} из объекта json в python. Ошибка - {e}")
 
 
 def get_price_stock(stocks: list) -> list:
@@ -115,9 +76,6 @@ def get_price_stock(stocks: list) -> list:
         )
     utils_logger.info("Функция get_price_stock успешно завершила свою работу")
     return stock_prices
-
-
-currency_list = ["USD", "EUR"]
 
 
 def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
@@ -144,20 +102,51 @@ def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
     return currency_rate
 
 
-def max_five_transactions(data_time: pd.Timestamp) -> pd.DataFrame:
-    """
-    Функция, которая извлекает топ-5 транзакций по сумме платежа.
-    """
-    df = pd.read_excel(path_to_file)
-
-    filtered_df = df.copy()
-
-    filtered_df = filtered_df.loc[
-        (pd.to_datetime(filtered_df["Дата операции"], format="%d.%m.%Y %H:%M:%S", dayfirst=True) <= data_time)
-        & (
-            pd.to_datetime(filtered_df["Дата операции"], format="%d.%m.%Y %H:%M:%S", dayfirst=True)
-            >= data_time.replace(day=1)
+def top_5_operations(list_dict):
+    """возвращает 5 самых крупных операции по столбцу "Сумма операции"""
+    try:
+        list_data = []
+        df = pd.DataFrame(list_dict)
+        df["datetime"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+        df_sorted = df.sort_values(by="Сумма платежа", ascending=False, inplace=False).iloc[0:5, :]
+        for _, row in df_sorted.iterrows():
+            dic = {
+                "date": row["Дата операции"],
+                "card_number": row["Номер карты"],
+                "amount": row["Сумма операции"],
+                "category": row["Категория"],
+                "descriprion": row["Описание"],
+            }
+            list_data.append(dic)
+        utils_logger.info("Успешно сформированы 5 самых доходных операций")
+        return list_data[:6]
+    except Exception as e:
+        utils_logger.warning(
+            f"""!!!! Не удалось сформировать отчет проверьте поля списка {list_dict}.
+        Ошибка - {e}"""
         )
-    ]
-    top_transactions = filtered_df.sort_values(by="Сумма операции с округлением", ascending=False).head(5)
-    return top_transactions
+        return []
+
+
+def common_information(list_dict):
+    """возвращает общую информацию по всем транзакциям"""
+    try:
+        list_data = []
+        df = pd.DataFrame(list_dict)
+        df["datetime"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+        grouped_data = df.groupby("Номер карты").agg({"Сумма платежа": "sum", "Кэшбэк": "sum"}).reset_index()
+        grouped_data["Сумма платежа"] = grouped_data["Сумма платежа"].abs()
+        for _, row in grouped_data.iterrows():
+            dic = {
+                "last_digits": (row["Номер карты"])[-4:],
+                "total_spent": row["Сумма платежа"],
+                "cashbak": round((row["Кэшбэк"]) / (row["Сумма платежа"]) * 100, 2),
+            }
+            list_data.append(dic)
+        utils_logger.info("Успешно сформированa общая информация по всем транзакциям")
+        return list_data
+    except Exception as e:
+        utils_logger.warning(
+            f"""!!!! Не удалось сформировать отчет проверьте поля списка {list_dict}.
+        Ошибка - {e}"""
+        )

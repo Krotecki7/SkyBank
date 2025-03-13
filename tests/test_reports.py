@@ -1,50 +1,25 @@
 import json
 
-
 import pandas as pd
 import pytest
 
-from src.reports import spending_by_category, writing_report
+from src.reports import spending_by_weekday, writing_report
 
 
-@pytest.mark.parametrize(
-    "df, expected",
-    [
-        (
-            pd.DataFrame(
-                {
-                    "Дата платежа": ["01.01.2025", "01.01.2025", "02.01.2025", "03.01.2025"],
-                    "Категория": ["Такси", "Еда", "Такси", "Супермаркеты"],
-                    "Сумма операции": [-777, -555, -1312, -666],
-                }
-            ),
-            pd.DataFrame({"Категория": ["Еда"], "Сумма трат": [555]}),
-        )
-    ],
-)
-def test_spending_by_category(df, expected):
-    result = spending_by_category(df, "Еда", "01.01.2025")
-    pd.testing.assert_frame_equal(result, expected)
+@pytest.fixture
+def df_spendings():
+    return pd.DataFrame(
+        {
+            "Дата операции": ["31.01.2022 16:44:00", "30.12.2021 16:44:00", "24.12.2021 16:44:00"],
+            "Дата платежа": ["31.12.2021", "30.12.2021", "24.12.2021"],
+            "Сумма операции": [-160.89, -400, -900],
+            "Сумма платежа": [-160.89, -400, -900],
+        }
+    )
 
 
-@pytest.mark.parametrize(
-    "df, expected",
-    [
-        (
-            pd.DataFrame(
-                {
-                    "Дата платежа": ["01.01.2025", "01.01.2025", "02.01.2025", "03.01.2025"],
-                    "Категория": ["Такси", "Еда", "Такси", "Супермаркеты"],
-                    "Сумма операции": [-777, -555, -1312, -666],
-                }
-            ),
-            pd.DataFrame({"Категория": ["Еда"], "Сумма трат": [555]}),
-        )
-    ],
-)
-def test_spending_by_category_not_date(df, expected):
-    result = spending_by_category(df, "Еда")
-    pd.testing.assert_frame_equal(result, expected)
+def test_spending_by_weekday_1(df_spendings):
+    assert spending_by_weekday(df_spendings, "2022-02-01") is None
 
 
 def test_writing_report():

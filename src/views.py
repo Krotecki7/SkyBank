@@ -1,20 +1,27 @@
 import json
-import os
+from datetime import datetime, timedelta
 
-from src.utils import exchange_rate, for_each_card, get_price_stock, greeting, read_excel, max_five_transactions
+import pandas as pd
 
-path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
-my_list = read_excel(path_to_file)
+from src.utils import common_information, exchange_rate, get_excel_df, get_price_stock, greeting, top_5_operations
 
 
-def return_json_answer(user_date):
-    """Функция выводящая результат запроса по дате"""
-    info_by_transactions = {
-        "greeting": greeting(),
-        "cards": for_each_card(my_list),
-        "top transactions": max_five_transactions(user_date),
-        "currency rates": exchange_rate(currency_list=["USD", "EUR"]),
-        "stock_prices": get_price_stock(stocks=["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]),
+def main(str_time):
+    """принимает дату в формате строки YYYY-MM-DD HH:MM:SS и возвращает общую информацию в формате
+    json о банковских транзакциях за период с начала месяца до этой даты"""
+    data = get_excel_df("operations.xlsx")
+    data_df = pd.DataFrame(data)
+    date_obj = datetime.strptime(str_time, "%Y-%m-%d %H:%M:%S")
+    data_df["datetime"] = pd.to_datetime(data_df["Дата операции"], dayfirst=True)
+    json_data = data_df[
+        (data_df["datetime"] >= (date_obj - timedelta(days=date_obj.day - 1))) & (data_df["datetime"] <= date_obj)
+    ]
+
+    agg_dict = {
+        "greetings": greetings(),
+        "cards": common_information(json_data),
+        "top_transactions": top_5_operations(json_data),
+        "currency_rates": get_stock_price(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]),
+        "stock_prices": exchange_rate(["USD", "EUR"]),
     }
-    answer_in_json_format = json.dumps(info_by_transactions, indent=4, ensure_ascii=False)
-    return answer_in_json_format
+    return json.dumps(agg_dict, ensure_ascii=False)
