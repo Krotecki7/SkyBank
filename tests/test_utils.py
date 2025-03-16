@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.utils import exchange_rate, greeting, top_5_operations, common_information, get_excel_df
+from src.utils import common_information, exchange_rate, get_excel_df, greeting, top_5_operations
 
 
 @pytest.fixture

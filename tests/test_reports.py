@@ -1,40 +1,32 @@
 import json
 
 import pandas as pd
-import pytest
 
 from src.reports import spending_by_category, writing_report
-from datetime import datetime
 
 
 def test_spending_by_category():
     data = {
-        'Категория': ['Еда', 'Еда', 'Транспорт', 'Развлечения', 'Еда'],
-        'Дата платежа': [
-            '2023-07-15',
-            '2023-08-10',
-            '2023-09-20',
-            '2023-09-25',
-            '2023-10-05'
-        ],
-        'Сумма платежа': [100, 150, 200, 50, 300]
+        "Категория": ["Еда", "Еда", "Транспорт", "Развлечения", "Еда"],
+        "Дата платежа": ["2023-07-15", "2023-08-10", "2023-09-20", "2023-09-25", "2023-10-05"],
+        "Сумма платежа": [100, 150, 200, 50, 300],
     }
 
     transactions_df = pd.DataFrame(data)
 
-    result = spending_by_category(transactions_df, 'Еда', '2023-10-10')
+    result = spending_by_category(transactions_df, "Еда", "2023-10-10")
     assert result == 550
 
-    result = spending_by_category(transactions_df, 'Транспорт', '2023-10-10')
+    result = spending_by_category(transactions_df, "Транспорт", "2023-10-10")
     assert result == 200
 
-    result = spending_by_category(transactions_df, 'Развлечения', '2023-10-10')
+    result = spending_by_category(transactions_df, "Развлечения", "2023-10-10")
     assert result == 50
 
-    result = spending_by_category(transactions_df, 'Косметика', '2023-10-10')
+    result = spending_by_category(transactions_df, "Косметика", "2023-10-10")
     assert result == 0
 
-    result = spending_by_category(transactions_df, 'Еда', '2023-09-30')
+    result = spending_by_category(transactions_df, "Еда", "2023-09-30")
     assert result == 250
 
 

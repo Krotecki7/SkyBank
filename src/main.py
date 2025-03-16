@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.reports import spending_by_category
 from src.services import find_numbers
-from src.utils import common_information, greeting, get_excel_df
+from src.utils import common_information, get_excel_df, greeting
 
 
 def main():
@@ -23,4 +23,6 @@ def main():
     elif user_input == "3":
         print(greeting())
         user_choice = input("Введите категорию и дату для поиска: ")
-        print(spending_by_category(transactions_df=pd.DataFrame(get_excel_df("operations.xlsx")), category=user_choice))
+        print(
+            spending_by_category(transactions_df=pd.DataFrame(get_excel_df("operations.xlsx")), category=user_choice)
+        )

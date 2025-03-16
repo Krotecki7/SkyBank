@@ -1,11 +1,13 @@
 import logging
 import os
+from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Optional
-from src.utils import get_excel_df
-from datetime import datetime, timedelta
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
+from src.utils import get_excel_df
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rel_file_path = os.path.join(current_dir, "../logs/utils.log")
@@ -53,15 +55,10 @@ def spending_by_category(transactions_df: pd.DataFrame, category: str, date: Opt
     three_months_ago = date - pd.DateOffset(months=3)
 
     filtered_df = transactions_df[
-        (transactions_df['Категория'] == category) &
-        (pd.to_datetime(transactions_df['Дата платежа'], dayfirst=False) >= three_months_ago) &
-        (pd.to_datetime(transactions_df['Дата платежа'], dayfirst=False) <= date)
-        ]
+        (transactions_df["Категория"] == category)
+        & (pd.to_datetime(transactions_df["Дата платежа"], dayfirst=False) >= three_months_ago)
+        & (pd.to_datetime(transactions_df["Дата платежа"], dayfirst=False) <= date)
+    ]
 
-    total_expenses = filtered_df['Сумма платежа'].sum()
+    total_expenses = filtered_df["Сумма платежа"].sum()
     return total_expenses
-
-
-if __name__ == "__main__":
-    transactions_df = pd.DataFrame(get_excel_df("operations.xlsx"))
-    print(spending_by_category(transactions_df, 'Супермаркеты', "31.12.2021 16:44:00"))
