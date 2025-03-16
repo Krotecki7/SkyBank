@@ -1,10 +1,9 @@
 import json
 import logging
 import os
+import re
 
-path_to_file = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx"
-)
+path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rel_file_path = os.path.join(current_dir, "../logs/utils.log")
@@ -22,7 +21,9 @@ def find_numbers(list_trans):
     """Функция возвращает JSON со всеми транзакциями, содержащими в описании мобильные номера."""
     current_transactions = []
     for transaction in list_trans:
-        if "+" in transaction["Описание"]:
+        pattern = r"[+]\d"
+        description = transaction.get("Описание")
+        if re.findall(pattern, str(description), flags=re.IGNORECASE):
             current_transactions.append(transaction)
     services_logger.debug("Получены транзакции с номерами телефонов в описании")
     current_transactions_1 = json.dumps(current_transactions, ensure_ascii=False)

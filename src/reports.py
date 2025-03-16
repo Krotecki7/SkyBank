@@ -1,14 +1,13 @@
-import datetime
 import logging
 import os
+from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
+import numpy as np
 import pandas as pd
 
-path_to_file = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx"
-)
+from src.utils import get_excel_df
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rel_file_path = os.path.join(current_dir, "../logs/utils.log")
@@ -22,10 +21,10 @@ reports_logger.addHandler(file_handler)
 reports_logger.setLevel(logging.DEBUG)
 
 
-def writing_report(filename="report") -> Callable:
+def writing_report(filename="report"):
     """Декоратор указывающий файл записи данных"""
 
-    def my_decorator(function: Callable) -> Callable:
+    def my_decorator(function):
         """Декоратор записи данных в файл"""
 
         @wraps(function)
@@ -45,57 +44,21 @@ def writing_report(filename="report") -> Callable:
     return my_decorator
 
 
-def spending_by_category(
-    transactions: pd.DataFrame, category: str, date: Optional[str] = None
-) -> pd.DataFrame:
-    """Функция выводящая траты за последние 3 месяца от вводимой даты в заданой категории"""
-    edit_df = transactions.drop(
-        [
-            "Payment date",
-            "Card number",
-            "Status",
-            "Transaction currency",
-            "Payment amount",
-            "Payment currency",
-            "Cashback",
-            "MCC",
-            "Description",
-            "Bonuses (including cashback)",
-            "Rounding to the investment bank",
-            "The amount of the operation with rounding",
-        ],
-        axis=1,
-    )
-    edit_df["Transaction date"] = edit_df["Transaction date"].apply(
-        lambda x: datetime.datetime.strptime(f"{x}", "%d.%m.%Y %H:%M:%S").date()
-    )
-    try:
-        if date:
-            end_date_obj = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S").date()
-            start_date_obj = end_date_obj - datetime.timedelta(days=90)
-        else:
-            end_date_obj = datetime.datetime.now().date()
-            start_date_obj = end_date_obj - datetime.timedelta(days=90)
-        report_df = edit_df.loc[
-            (edit_df["Transaction date"] <= end_date_obj)
-            & (edit_df["Transaction date"] >= start_date_obj)
-            & (edit_df["Category"] == category)
-        ]
-        report_df.loc[:, "Transaction date"] = report_df["Transaction date"].apply(
-            lambda x: x.strftime("%d.%m.%Y")
-        )
-        if not report_df.to_dict(orient="records"):
-            raise NameError
-    except ValueError:
-        reports_logger.error("Ошибка в выборке операций: не корректный формат даты")
-        print("Некорректный формат даты")
-        return pd.DataFrame({})
-    except NameError:
-        print("Неверно введена категория")
-        return pd.DataFrame({})
+def spending_by_category(transactions_df: pd.DataFrame, category: str, date: Optional[str] = None) -> dict:
+    """Функция для вычисления трат по категории за последние три месяца."""
+
+    if date is None:
+        date = datetime.now()
     else:
-        reports_logger.info("Выборка операций успешно завершена")
-        return report_df
-    finally:
-        reports_logger.info("Завершение работы программы")
-        print("Формирование отчёта завершено")
+        date = pd.to_datetime(date, dayfirst=False)
+
+    three_months_ago = date - pd.DateOffset(months=3)
+
+    filtered_df = transactions_df[
+        (transactions_df["Категория"] == category)
+        & (pd.to_datetime(transactions_df["Дата платежа"], dayfirst=False) >= three_months_ago)
+        & (pd.to_datetime(transactions_df["Дата платежа"], dayfirst=False) <= date)
+    ]
+
+    total_expenses = filtered_df["Сумма платежа"].sum()
+    return total_expenses

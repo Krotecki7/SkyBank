@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-from typing import Any
 
 import pandas as pd
 import requests
@@ -23,70 +22,38 @@ file_handler.setFormatter(file_formatter)
 utils_logger.addHandler(file_handler)
 utils_logger.setLevel(logging.DEBUG)
 
-path_to_file = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx"
-)
+path_to_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "operations.xlsx")
 
 
 def greeting():
-    """Функция вывода сообщения приветствия в зависимости от времени суток"""
-    opts = {"greeting": ("Доброе утро", "Добрый день", "Добрый вечер", "Доброй ночи")}
-    current_time = datetime.datetime.now()
-    if 4 <= current_time.hour <= 12:
-        greet = opts["greeting"][0]
-    elif 12 <= current_time.hour <= 16:
-        greet = opts["greeting"][1]
-    elif 16 <= current_time.hour <= 24:
-        greet = opts["greeting"][2]
+    """
+    Функция, которая приветствует в зависимости от текущего времени суток.
+    Возвращает строку приветствия в зависимости от времени.
+    """
+    current_date_time = datetime.datetime.now()
+    hour = current_date_time.hour
+
+    if 0 <= hour < 6 or 22 <= hour <= 23:
+        return "Доброй ночи"
+    elif 17 <= hour <= 22:
+        return "Добрый вечер"
+    elif 7 <= hour <= 11:
+        return "Доброе утро"
     else:
-        greet = opts["greeting"][3]
-    return greet
+        return "Добрый день"
 
 
-def read_excel(path_to_file: str) -> list[dict]:
-    """Функция читает .xlsx файл и возвращает список словарей"""
-    df = pd.read_excel(path_to_file)
-    result = df.apply(
-        lambda row: {
-            "Дата платежа": row["Дата платежа"],
-            "Статус": row["Статус"],
-            "Сумма платежа": row["Сумма платежа"],
-            "Валюта платежа": row["Валюта платежа"],
-            "Категория": row["Категория"],
-            "Описание": row["Описание"],
-            "Номер карты": row["Номер карты"],
-        },
-        axis=1,
-    ).tolist()
-    return result
-
-
-def for_each_card(my_list: list) -> list:
-    """Функция создания информации по каждой карте"""
-    utils_logger.info("Начало работы функции (for_each_card)")
-    cards = {}
-    result = []
-    utils_logger.info("Перебор транзакций")
-    for i in my_list:
-        if i["Номер карты"] == "nan" or type(i["Номер карты"]) is float:
-            continue
-        elif i["Сумма платежа"] == "nan":
-            continue
-        else:
-            if i["Номер карты"][1:] in cards:
-                cards[i["Номер карты"][1:]] += float(str(i["Сумма платежа"])[1:])
-            else:
-                cards[i["Номер карты"][1:]] = float(str(i["Сумма платежа"])[1:])
-    for k, v in cards.items():
-        result.append(
-            {
-                "last_digits": k,
-                "total_spent": round(v, 2),
-                "cashback": round(v / 100, 2),
-            }
-        )
-    utils_logger.info("Завершение работы функции (for_each_card)")
-    return result
+def get_excel_df(filename: str) -> list[dict]:
+    """считывает данные из внешнего файла Excel и возвращает их в формате DataFrame
+    за период с начала месяца до заданной даты в формате YYYY-MM-DD HH:MM:SS"""
+    try:
+        path = os.path.join("../data/", filename)
+        excel_data = pd.read_excel(path)
+        list_dict = excel_data.to_dict(orient="records")
+        utils_logger.info(f"Успешное преобразование файла {filename} из объекта json в python")
+        return list_dict
+    except Exception as e:
+        utils_logger.warning(f"!!!! Не удалось преобразовать файл {filename} из объекта json в python. Ошибка - {e}")
 
 
 def get_price_stock(stocks: list) -> list:
@@ -96,7 +63,7 @@ def get_price_stock(stocks: list) -> list:
     stock_prices = []
     utils_logger.info("Функция обрабатывает данные транзакций.")
     for stock in stocks:
-        logger.info("Перебор акций в списке 'stocks' в функции (get_price_stock)")
+        utils_logger.info("Перебор акций в списке 'stocks' в функции (get_price_stock)")
         url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={stock}&apikey={api_key}"
         r = requests.get(url)
         result = r.json()
@@ -135,56 +102,51 @@ def exchange_rate(currency_list: list[str]) -> list[dict[str, [str | int]]]:
     return currency_rate
 
 
-def top_5_transactions(
-    date_string: str, data_frame: pd.DataFrame
-) -> list[dict[str, Any]]:
-    """Функция отображения топ 5 транзакций по сумме платежа"""
+def top_5_operations(list_dict):
+    """возвращает 5 самых крупных операции по столбцу "Сумма операции"""
     try:
-        date_string_dt_obj = datetime.datetime.strptime(
-            date_string, "%Y-%m-%d %H:%M:%S"
-        ).date()
-        start_date_for_sorting = date_string_dt_obj.replace(day=1)
-        edited_df = data_frame.drop(
-            [
-                "Payment date",
-                "Card number",
-                "Transaction currency",
-                "Payment amount",
-                "Payment currency",
-                "Cashback",
-                "MCC",
-                "Bonuses (including cashback)",
-                "Rounding to the investment bank",
-                "The amount of the operation with rounding",
-            ],
-            axis=1,
-        )
-        edited_df["Transaction date"] = edited_df["Transaction date"].apply(
-            lambda x: datetime.datetime.strptime(f"{x}", "%d.%m.%Y %H:%M:%S").date()
-        )
-        filtered_df_by_date = edited_df.loc[
-            (edited_df["Transaction date"] <= date_string_dt_obj)
-            & (edited_df["Transaction date"] >= start_date_for_sorting)
-            & (edited_df["Transaction amount"].notnull())
-            & (edited_df["Status"] != "FAILED")
-        ]
-        sorted_df_by_transaction_amount = filtered_df_by_date.sort_values(
-            by=["Transaction amount"], ascending=False, key=lambda x: abs(x)
-        )
-        top_transactions = sorted_df_by_transaction_amount[0:5]
-        data_list = []
-        for index, row in top_transactions.iterrows():
-            data_dict = {
-                "date": row["Transaction date"].strftime("%d.%m.%Y"),
-                "amount": round(row["Transaction amount"], 2),
-                "category": row["Category"],
-                "description": row["Description"],
+        list_data = []
+        df = pd.DataFrame(list_dict)
+        df["datetime"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+        df_sorted = df.sort_values(by="Сумма платежа", ascending=False, inplace=False).iloc[0:5, :]
+        for _, row in df_sorted.iterrows():
+            dic = {
+                "date": row["Дата операции"],
+                "card_number": row["Номер карты"],
+                "amount": row["Сумма операции"],
+                "category": row["Категория"],
+                "descriprion": row["Описание"],
             }
-            data_list.append(data_dict)
-        utils_logger.info("Данные по топу транзакций успешно сформированны")
-    except ValueError:
-        utils_logger.error("Ошибка ввода данных: неверный формат даты")
-        print("Неверный формат даты")
+            list_data.append(dic)
+        utils_logger.info("Успешно сформированы 5 самых доходных операций")
+        return list_data[:6]
+    except Exception as e:
+        utils_logger.warning(
+            f"""!!!! Не удалось сформировать отчет проверьте поля списка {list_dict}.
+        Ошибка - {e}"""
+        )
         return []
-    else:
-        return data_list
+
+
+def common_information(list_dict):
+    """возвращает общую информацию по всем транзакциям"""
+    try:
+        list_data = []
+        df = pd.DataFrame(list_dict)
+        df["datetime"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+        grouped_data = df.groupby("Номер карты").agg({"Сумма платежа": "sum", "Кэшбэк": "sum"}).reset_index()
+        grouped_data["Сумма платежа"] = grouped_data["Сумма платежа"].abs()
+        for _, row in grouped_data.iterrows():
+            dic = {
+                "last_digits": (row["Номер карты"])[-4:],
+                "total_spent": row["Сумма платежа"],
+                "cashbak": round((row["Кэшбэк"]) / (row["Сумма платежа"]) * 100, 2),
+            }
+            list_data.append(dic)
+        utils_logger.info("Успешно сформированa общая информация по всем транзакциям")
+        return list_data
+    except Exception as e:
+        utils_logger.warning(
+            f"""!!!! Не удалось сформировать отчет проверьте поля списка {list_dict}.
+        Ошибка - {e}"""
+        )
