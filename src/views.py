@@ -18,10 +18,10 @@ def main(str_time):
     ]
 
     agg_dict = {
-        "greetings": greetings(),
+        "greetings": greeting(),
         "cards": common_information(json_data),
         "top_transactions": top_5_operations(json_data),
-        "currency_rates": get_stock_price(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]),
+        "currency_rates": get_price_stock(["AAPL", "AMZN", "GOOGL", "MSFT", "TSLA"]),
         "stock_prices": exchange_rate(["USD", "EUR"]),
     }
     return json.dumps(agg_dict, ensure_ascii=False)

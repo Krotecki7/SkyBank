@@ -1,11 +1,11 @@
-import json
 import logging
 import os
-from datetime import date, datetime, time, timedelta
 from functools import wraps
-from typing import Any
-
+from typing import Any, Optional
+from src.utils import get_excel_df
+from datetime import datetime, timedelta
 import pandas as pd
+import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 rel_file_path = os.path.join(current_dir, "../logs/utils.log")
@@ -42,22 +42,26 @@ def writing_report(filename="report"):
     return my_decorator
 
 
-def spending_by_weekday(transactions, date):
-    """возвращает средние траты в каждый из дней недели за последние три месяца (от переданной даты)"""
-    try:
-        if date is None:
-            date = datetime.now()
-        else:
-            date = datetime.strptime(date, "%Y-%m-%d")
+def spending_by_category(transactions_df: pd.DataFrame, category: str, date: Optional[str] = None) -> dict:
+    """Функция для вычисления трат по категории за последние три месяца."""
 
-        transactions["datetime"] = pd.to_datetime(transactions["Дата операции"], dayfirst=True)
-        transactions["day_name"] = pd.to_datetime(transactions["Дата операции"], dayfirst=True).dt.day_name()
-        df = transactions[
-            (transactions["datetime"] >= (date + relativedelta(months=-3))) & (transactions["datetime"] <= date)
-        ].groupby(by="day_name")
-        print(df.head(10))
-        reports_logger.info("Успешное формирование отчета о средних тратах.")
-        return (df["Сумма платежа"].mean().abs().round(2)).to_json()
-    except Exception as e:
-        reports_logger.warning(f"!!!! Неудачное формирование отчета. Ошибка - {e}")
+    if date is None:
+        date = datetime.now()
+    else:
+        date = pd.to_datetime(date, dayfirst=False)
 
+    three_months_ago = date - pd.DateOffset(months=3)
+
+    filtered_df = transactions_df[
+        (transactions_df['Категория'] == category) &
+        (pd.to_datetime(transactions_df['Дата платежа'], dayfirst=False) >= three_months_ago) &
+        (pd.to_datetime(transactions_df['Дата платежа'], dayfirst=False) <= date)
+        ]
+
+    total_expenses = filtered_df['Сумма платежа'].sum()
+    return total_expenses
+
+
+if __name__ == "__main__":
+    transactions_df = pd.DataFrame(get_excel_df("operations.xlsx"))
+    print(spending_by_category(transactions_df, 'Супермаркеты', "31.12.2021 16:44:00"))

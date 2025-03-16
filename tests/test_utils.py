@@ -1,10 +1,19 @@
-import json
 from unittest.mock import patch
 
 import pandas as pd
 import pytest
 
 from src.utils import exchange_rate, greeting, top_5_operations, common_information, get_excel_df
+
+
+@pytest.fixture
+def currencies():
+    return ["USD"]
+
+
+@pytest.fixture
+def answer_currencies():
+    return {"base": "USD", "rates": {"RUB": "92.86"}}
 
 
 @pytest.fixture

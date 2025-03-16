@@ -3,23 +3,39 @@ import json
 import pandas as pd
 import pytest
 
-from src.reports import spending_by_weekday, writing_report
+from src.reports import spending_by_category, writing_report
+from datetime import datetime
 
 
-@pytest.fixture
-def df_spendings():
-    return pd.DataFrame(
-        {
-            "Дата операции": ["31.01.2022 16:44:00", "30.12.2021 16:44:00", "24.12.2021 16:44:00"],
-            "Дата платежа": ["31.12.2021", "30.12.2021", "24.12.2021"],
-            "Сумма операции": [-160.89, -400, -900],
-            "Сумма платежа": [-160.89, -400, -900],
-        }
-    )
+def test_spending_by_category():
+    data = {
+        'Категория': ['Еда', 'Еда', 'Транспорт', 'Развлечения', 'Еда'],
+        'Дата платежа': [
+            '2023-07-15',
+            '2023-08-10',
+            '2023-09-20',
+            '2023-09-25',
+            '2023-10-05'
+        ],
+        'Сумма платежа': [100, 150, 200, 50, 300]
+    }
 
+    transactions_df = pd.DataFrame(data)
 
-def test_spending_by_weekday_1(df_spendings):
-    assert spending_by_weekday(df_spendings, "2022-02-01") is None
+    result = spending_by_category(transactions_df, 'Еда', '2023-10-10')
+    assert result == 550
+
+    result = spending_by_category(transactions_df, 'Транспорт', '2023-10-10')
+    assert result == 200
+
+    result = spending_by_category(transactions_df, 'Развлечения', '2023-10-10')
+    assert result == 50
+
+    result = spending_by_category(transactions_df, 'Косметика', '2023-10-10')
+    assert result == 0
+
+    result = spending_by_category(transactions_df, 'Еда', '2023-09-30')
+    assert result == 250
 
 
 def test_writing_report():
